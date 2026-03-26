@@ -2,21 +2,19 @@ import React from 'react';
 import ConfigGenerator from '../../base/ConfigGenerator';
 
 /**
- * Kimi-K2 Configuration Generator
- * Supports Kimi-K2-Instruct and Kimi-K2-Thinking models
+ * MiniMax-M2 Configuration Generator
+ * Supports MiniMax-M2 and MiniMax-M2.1 models
  */
-const KimiK2ConfigGenerator = () => {
+const MiniMaxM2ConfigGenerator = () => {
   const config = {
-    modelFamily: 'moonshotai',
+    modelFamily: 'MiniMaxAI',
 
     options: {
       hardware: {
         name: 'hardware',
         title: 'Hardware Platform',
         items: [
-          { id: 'h200', label: 'H200', default: true },
-          { id: 'b200', label: 'B200', default: false },
-          { id: 'mi300x', label: 'MI300X', default: false },
+          { id: 'mi300x', label: 'MI300X', default: true },
           { id: 'mi325x', label: 'MI325X', default: false },
           { id: 'mi355x', label: 'MI355X', default: false }
         ]
@@ -25,8 +23,8 @@ const KimiK2ConfigGenerator = () => {
         name: 'modelname',
         title: 'Model Name',
         items: [
-          { id: 'instruct', label: 'Kimi-K2-Instruct', default: true },
-          { id: 'thinking', label: 'Kimi-K2-Thinking', default: false }
+          { id: 'M2.1', label: 'MiniMax-M2.1', default: true },
+          { id: 'M2', label: 'MiniMax-M2', default: false }
         ]
       },
       strategy: {
@@ -35,8 +33,7 @@ const KimiK2ConfigGenerator = () => {
         type: 'checkbox',
         items: [
           { id: 'tp', label: 'TP', default: true, required: true },
-          { id: 'dp', label: 'DP attention', default: false },
-          { id: 'ep', label: 'EP', default: false }
+
         ]
       },
       reasoning: {
@@ -60,49 +57,35 @@ const KimiK2ConfigGenerator = () => {
     generateCommand: function (values) {
       const { hardware, modelname, strategy, reasoning, toolcall } = values;
 
-      // Validation: Kimi-K2-Instruct doesn't support reasoning parser
-      if (modelname === 'instruct' && reasoning === 'enabled') {
-        return `# Error: Kimi-K2-Instruct doesn't support reasoning parser\n# Please select "Disabled" for Reasoning Parser or choose Kimi-K2-Thinking model`;
-      }
 
       // Model name mapping
       const modelMap = {
-        'instruct': 'Kimi-K2-Instruct',
-        'thinking': 'Kimi-K2-Thinking'
+        'M2.1': 'MiniMax-M2.1',
+        'M2': 'MiniMax-M2'
       };
 
       const modelName = `${this.modelFamily}/${modelMap[modelname]}`;
 
-      let cmd = 'python3 -m sglang.launch_server \\\n';
-
-      if (hardware === 'mi300x' || hardware === 'mi325x' || hardware === 'mi355x') {
-        cmd = 'SGLANG_ROCM_FUSED_DECODE_MLA=0 ' + cmd;
-      }
-
+      let cmd = 'sglang serve \\\n';
       cmd += `  --model-path ${modelName}`;
 
       // Strategy configurations
       const strategyArray = Array.isArray(strategy) ? strategy : [];
       // TP is mandatory
-      cmd += ` \\\n  --tp 8`;
-      if (strategyArray.includes('dp')) {
-        cmd += ` \\\n  --dp 4 \\\n  --enable-dp-attention`;
-      }
-      if (strategyArray.includes('ep')) {
-        cmd += ` \\\n  --ep 4`;
-      }
+      cmd += ` \\\n  --tp 4`;
 
-      // Add trust-remote-code (required for Kimi-K2)
+
+      // Add trust-remote-code (required for MiniMax-M2)
       cmd += ` \\\n  --trust-remote-code`;
 
       // Add tool-call-parser if enabled
       if (toolcall === 'enabled') {
-        cmd += ` \\\n  --tool-call-parser kimi_k2`;
+        cmd += ` \\\n  --tool-call-parser minimax-m2`;
       }
 
       // Add reasoning-parser if enabled
       if (reasoning === 'enabled') {
-        cmd += ` \\\n  --reasoning-parser kimi_k2`;
+        cmd += ` \\\n  --reasoning-parser minimax-append-think`;
       }
 
       return cmd;
@@ -112,4 +95,4 @@ const KimiK2ConfigGenerator = () => {
   return <ConfigGenerator config={config} />;
 };
 
-export default KimiK2ConfigGenerator;
+export default MiniMaxM2ConfigGenerator;
